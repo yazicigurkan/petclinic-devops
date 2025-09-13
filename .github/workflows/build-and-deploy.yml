@@ -46,7 +46,7 @@ jobs:
           # SonarQube taraması çalıştır
           sonar-scanner \
             -Dsonar.projectKey=petclinic-devops \
-            -Dsonar.projectName=Spring-PetClinic-DevSecOps \
+            -Dsonar.projectName=petclinic-devops \
             -Dsonar.sources=src/main/java \
             -Dsonar.tests=src/test/java \
             -Dsonar.java.binaries=target/classes \
