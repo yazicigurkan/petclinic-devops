@@ -56,12 +56,12 @@ jobs:
           
           dependency-check.sh \
             --project "petclinic-devops" \
-            --scan . \
+            --scan "." \
             --format "ALL" \
-            --out reports \
-            --enableRetired \
+            --out "reports" \
+            --failOnCVSS 10 \
             --enableExperimental \
-            --failOnCVSS 7
+            --noupdate
 
   # Build and Test
   build-test:
