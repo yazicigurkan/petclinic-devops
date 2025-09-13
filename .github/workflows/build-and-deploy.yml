@@ -26,7 +26,7 @@ jobs:
         run: ./mvnw clean package -DskipTests
 
       - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v1.0
+        uses: sonarsource/sonarcloud-github-action@v2
         with:
           projectBaseDir: .
         env:
