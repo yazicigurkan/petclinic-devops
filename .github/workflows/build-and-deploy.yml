@@ -11,28 +11,11 @@ env:
   SONAR_TOKEN: ${{ secrets.YOUR_SONAR_TOKEN }}
 
 jobs:
-  # Java Setup for all jobs
-  java-setup:
-    name: Ensure Java 17
-    runs-on: self-hosted
-    outputs:
-      java-version: ${{ steps.check-java.outputs.version }}
-    steps:
-      - name: Set Java 17 for runner user
-        run: |
-          sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-17-openjdk-amd64/bin/java 1
-          sudo update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/java-17-openjdk-amd64/bin/javac 1
-          sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-          sudo update-alternatives --set javac /usr/lib/jvm/java-17-openjdk-amd64/bin/javac
-          java -version
-          javac -version
-        id: check-java
 
   # Static Analysis & Security Scanning
   sast-scan:
     name: Static Application Security Testing
     runs-on: self-hosted
-    needs: java-setup
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
