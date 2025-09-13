@@ -48,21 +48,19 @@ jobs:
         working-directory: ./   # pom.xml'in olduğu dizin
 
       # Dependency Scanning
-      - name: OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@main
-        with:
-          project: 'petclinic-devops'
-          path: '.'
-          format: 'ALL'
-          args: >
-            --enableRetired
-            --enableExperimental
+      - name: Dependency Check CLI Scan
+        run: |
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export PATH=$JAVA_HOME/bin:$PATH:$HOME/tools/dependency-check/bin
+          
+          dependency-check.sh \
+            --project "petclinic-devops" \
+            --scan . \
+            --format "ALL" \
+            --out reports \
+            --enableRetired \
+            --enableExperimental \
             --failOnCVSS 7
-        env:
-          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-          PATH: ${{ env.JAVA_HOME }}/bin:${{ env.PATH }}
-        # Eğer entrypoint problemi varsa:
-        # entrypoint: ["/bin/bash", "-c"]
 
   # Build and Test
   build-test:
