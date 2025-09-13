@@ -26,12 +26,10 @@ jobs:
         run: ./mvnw clean package -DskipTests
 
       - name: SonarQube Scan
-        uses: sonarsource/sonarcloud-github-action@v2
-        with:
-          projectBaseDir: .
-        env:
-          SONAR_TOKEN: ${{ secrets.YOUR_SONAR_TOKEN }}
-          SONAR_HOST_URL: http://sonarqube:9000
+        run: ./mvnw sonar:sonar \
+          -Dsonar.projectKey=spring-petclinic \
+          -Dsonar.host.url=http://sonarqube:9000 \
+          -Dsonar.login=${{ secrets.YOUR_SONAR_TOKEN }}
 
       - name: Build Docker Image
         run: docker build -t gurkan/petclinic:${{ github.sha }} .
