@@ -1,67 +1,66 @@
 name: Build, Scan and Deploy
 
 on:
-repository_dispatch:   # Kod repo'dan tetiklenecek
-types: [petclinic-updated]
+  repository_dispatch:   # Kod repo'dan tetiklenecek
+    types: [petclinic-updated]
 
 jobs:
-build:
-runs-on: self-hosted
+  build:
+    runs-on: self-hosted
 
-steps:
-- name: Checkout Petclinic Repo
-uses: actions/checkout@v3
-with:
-repository: yazicigurkan/spring-petclinic   # kendi fork'un
-ref: main
-token: ${{ secrets.YOUR_GH_PAT }}   # Personal Access Token gerekli
+    steps:
+      - name: Checkout Petclinic Repo
+        uses: actions/checkout@v3
+        with:
+          repository: yazicigurkan/spring-petclinic   # kendi fork'un
+          ref: main
+          token: ${{ secrets.YOUR_GH_PAT }}   # Personal Access Token gerekli
 
-- name: Set up JDK 17
-uses: actions/setup-java@v3
-with:
-java-version: '17'
-distribution: 'temurin'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-- name: Build with Maven
-run: ./mvnw clean package -DskipTests
+      - name: Build with Maven
+        run: ./mvnw clean package -DskipTests
 
-- name: SonarQube Scan
-uses: sonarsource/sonarcloud-github-action@v2
-with:
-projectBaseDir: .
-env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: SonarQube Scan
+        uses: sonarsource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: .
+        env:
           SONAR_TOKEN: ${{ secrets.YOUR_SONAR_TOKEN }}
-SONAR_HOST_URL: http://sonarqube:9000
+          SONAR_HOST_URL: http://sonarqube:9000
 
-- name: Build Docker Image
-run: docker build -t gurkan/petclinic:${{ github.sha }} .
+      - name: Build Docker Image
+        run: docker build -t gurkan/petclinic:${{ github.sha }} .
 
-- name: Scan Docker Image with Trivy
-uses: aquasecurity/trivy-action@master
-with:
-image-ref: gurkan/petclinic:${{ github.sha }}
-format: 'table'
-exit-code: '0'
-ignore-unfixed: true
+      - name: Scan Docker Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: gurkan/petclinic:${{ github.sha }}
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
 
-- name: Login to DockerHub
-uses: docker/login-action@v2
-with:
-username: ${{ secrets.DOCKERHUB_USER }}
-password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-- name: Push Docker Image
-run: docker push gurkan/petclinic:${{ github.sha }}
+      - name: Push Docker Image
+        run: docker push gurkan/petclinic:${{ github.sha }}
 
-- name: Update Kubernetes Manifests
-run: |
-         sed -i "s|image:.*|image: gurkan/petclinic:${{ github.sha }}|" k8s/deployment.yaml
+      - name: Update Kubernetes Manifests
+        run: |
+          sed -i "s|image:.*|image: gurkan/petclinic:${{ github.sha }}|" k8s/deployment.yaml
 
-     - name: Commit and Push K8s manifests
-run: |
-         git config --global user.email "actions@github.com"
-         git config --global user.name "GitHub Actions"
-         git add k8s/deployment.yaml
-         git commit -m "Update image to gurkan/petclinic:${{ github.sha }}"
-         git push
+      - name: Commit and Push K8s manifests
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git add k8s/deployment.yaml
+          git commit -m "Update image to gurkan/petclinic:${{ github.sha }}"
+          git push
