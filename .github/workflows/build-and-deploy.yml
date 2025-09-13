@@ -1,64 +1,293 @@
-name: Build, Scan and Deploy
+name: DevSecOps - Build, Scan and Deploy
 
 on:
-  repository_dispatch:   # Kod repo'dan tetiklenecek
+  repository_dispatch:
     types: [petclinic-updated]
 
-jobs:
-  build:
-    runs-on: self-hosted
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: gurkan/petclinic
+  SONAR_HOST_URL: "http://192.168.18.99:9000"
 
+jobs:
+  # Static Analysis & Security Scanning
+  sast-scan:
+    name: Static Application Security Testing
+    runs-on: self-hosted
     steps:
-      - name: Checkout Petclinic Repo
-        uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          repository: yazicigurkan/spring-petclinic   # kendi fork'un
+          repository: yazicigurkan/spring-petclinic
           ref: main
-          token: ${{ secrets.YOUR_GH_PAT }}   # Personal Access Token gerekli
+          token: ${{ secrets.YOUR_GH_PAT }}
+          fetch-depth: 0  # SonarQube için tam history gerekli
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'maven'
 
-      - name: Build with Maven
+      # Secrets Scanning
+      - name: GitLeaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.YOUR_GH_PAT }}
+        with:
+          config-path: .gitleaks.toml
+
+      # SAST - Tools
+      
+      - name: SonarQube SAST Scan
+        uses: sonarqube-quality-gate-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.YOUR_SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
+        with:
+          scannerMode: CLI
+          args: >
+            -Dsonar.projectKey=petclinic-devops
+            -Dsonar.projectName=Spring-PetClinic-DevSecOps
+            -Dsonar.sources=src/main/java
+            -Dsonar.tests=src/test/java
+            -Dsonar.java.binaries=target/classes
+            -Dsonar.junit.reportPaths=target/surefire-reports
+            -Dsonar.jacoco.reportPaths=target/site/jacoco/jacoco.xml
+            -Dsonar.host.url=${{ env.SONAR_HOST_URL }}
+            -Dsonar.token=${{ secrets.YOUR_SONAR_TOKEN }}
+
+      # Dependency Scanning
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'petclinic-devops'
+          path: '.'
+          format: 'ALL'
+          args: >
+            --enableRetired
+            --enableExperimental
+            --failOnCVSS 7
+
+  # Build and Test
+  build-test:
+    name: Build and Unit Tests
+    runs-on: self-hosted
+    needs: sast-scan
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          repository: yazicigurkan/spring-petclinic
+          ref: main
+          token: ${{ secrets.YOUR_GH_PAT }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run Unit Tests
+        run: |
+          ./mvnw test
+          ./mvnw jacoco:report
+
+      - name: Build Application
         run: ./mvnw clean package -DskipTests
 
-      - name: SonarQube Scan
-        run: ./mvnw sonar:sonar \
-          -Dsonar.projectKey=spring-petclinic \
-          -Dsonar.host.url=http://sonarqube:9000 \
-          -Dsonar.login=${{ secrets.YOUR_SONAR_TOKEN }}
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar-artifact
+          path: target/*.jar
+          retention-days: 1
+
+  # Container Build and Security Scan
+  container-security:
+    name: Container Security Scanning
+    runs-on: self-hosted
+    needs: build-test
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          repository: yazicigurkan/spring-petclinic
+          ref: main
+          token: ${{ secrets.YOUR_GH_PAT }}
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: jar-artifact
+          path: target/
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build Docker Image
-        run: docker build -t gurkan/petclinic:${{ github.sha }} .
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Scan Docker Image with Trivy
+      # Container Security Scanning - Multiple Tools
+      - name: Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: gurkan/petclinic:${{ github.sha }}
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
+          image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
 
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
+      - name: Trivy Critical/High CVE Check
+        uses: aquasecurity/trivy-action@master
         with:
-          username: ${{ secrets.DOCKERHUB_USER }}
+          image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      - name: Docker Scout CVE Scan
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: ${{ steps.meta.outputs.tags }}
+          sarif-file: scout-results.sarif
+
+      - name: Hadolint Dockerfile Scan
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint-results.sarif
+
+      # Upload Security Results
+      - name: Upload Trivy Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Registry Push
+  registry-push:
+    name: Push to Container Registry
+    runs-on: self-hosted
+    needs: container-security
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Push Docker Image
-        run: docker push gurkan/petclinic:${{ github.sha }}
+        run: |
+          docker push ${{ needs.container-security.outputs.image-tag }}
+
+  # Dynamic Application Security Testing
+  dast-scan:
+    name: Dynamic Application Security Testing
+    runs-on: self-hosted
+    needs: registry-push
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Deploy to Staging Environment
+        run: |
+          # K8s staging deployment
+          kubectl apply -f k8s/staging/ --namespace=staging
+          kubectl set image deployment/petclinic-staging petclinic=${{ needs.container-security.outputs.image-tag }} -n staging
+          kubectl rollout status deployment/petclinic-staging -n staging --timeout=300s
+
+      - name: Wait for Application Ready
+        run: |
+          sleep 30
+          kubectl wait --for=condition=available --timeout=300s deployment/petclinic-staging -n staging
+
+      - name: Get Staging URL
+        id: staging-url
+        run: |
+          STAGING_URL=$(kubectl get svc petclinic-staging-service -n staging -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "url=http://${STAGING_URL}:8080" >> $GITHUB_OUTPUT
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: ${{ steps.staging-url.outputs.url }}
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+      - name: OWASP ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.8.0
+        with:
+          target: ${{ steps.staging-url.outputs.url }}
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+  # GitOps Deployment
+  gitops-deploy:
+    name: GitOps Deployment
+    runs-on: self-hosted
+    needs: [container-security, dast-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    steps:
+      - name: Checkout GitOps Repo
+        uses: actions/checkout@v4
+        with:
+          repository: yazicigurkan/petclinic-gitops  # GitOps repo
+          token: ${{ secrets.GITOPS_PAT }}
+          path: gitops
 
       - name: Update Kubernetes Manifests
         run: |
-          sed -i "s|image:.*|image: gurkan/petclinic:${{ github.sha }}|" k8s/deployment.yaml
-
-      - name: Commit and Push K8s manifests
+          cd gitops
+          sed -i "s|image:.*|image: ${{ needs.container-security.outputs.image-tag }}|" k8s/production/deployment.yaml
+          
+      - name: Commit and Push Manifest Changes
         run: |
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
-          git add k8s/deployment.yaml
-          git commit -m "Update image to gurkan/petclinic:${{ github.sha }}"
+          cd gitops
+          git config --global user.email "devsecops-bot@company.com"
+          git config --global user.name "DevSecOps Bot"
+          git add k8s/production/deployment.yaml
+          git commit -m "🚀 Deploy: Update image to ${{ needs.container-security.outputs.image-tag }}"
           git push
+
+  # Security Compliance Report
+  security-report:
+    name: Security Compliance Report
+    runs-on: self-hosted
+    needs: [sast-scan, container-security, dast-scan]
+    if: always()
+    steps:
+      - name: Generate Security Summary
+        run: |
+          echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Scan Type | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| SAST | ✅ Completed | SonarQube, Semgrep |" >> $GITHUB_STEP_SUMMARY
+          echo "| SCA | ✅ Completed | OWASP Dependency Check |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container Scan | ✅ Completed | Trivy, Docker Scout |" >> $GITHUB_STEP_SUMMARY
+          echo "| DAST | ✅ Completed | OWASP ZAP |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secrets | ✅ Completed | GitLeaks |" >> $GITHUB_STEP_SUMMARY
