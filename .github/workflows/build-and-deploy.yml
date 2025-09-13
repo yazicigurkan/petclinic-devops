@@ -44,10 +44,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Run SonarQube Analysis
-        run: mvn clean verify sonar:sonar \
-         -Dsonar.projectKey=petclinic-devops \
-         -Dsonar.host.url=${{ env.SONAR_HOST_URL }} \
-         -Dsonar.login=${{ secrets.YOUR_SONAR_TOKEN }}
+        run: mvn clean verify sonar:sonar -Dsonar.projectKey=petclinic-devops -Dsonar.host.url=${{ env.SONAR_HOST_URL }} -Dsonar.login=${{ secrets.YOUR_SONAR_TOKEN }}
         working-directory: ./   # pom.xml'in olduğu dizin
 
       # Dependency Scanning
