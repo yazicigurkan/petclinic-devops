@@ -11,6 +11,17 @@ env:
   SONAR_TOKEN: ${{ secrets.YOUR_SONAR_TOKEN }}
 
 jobs:
+  java-setup:
+    name: Ensure Java 17
+    runs-on: self-hosted
+    outputs:
+      java-version: ${{ steps.check-java.outputs.version }}
+    steps:
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
   # Static Analysis & Security Scanning
   sast-scan:
