@@ -38,21 +38,17 @@ jobs:
 
       # SAST - SonarQube
       - name: SonarQube SAST Scan
-        run: |
-          wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-          unzip -q sonar-scanner-cli-4.8.0.2856-linux.zip
-          export PATH="$PATH:./sonar-scanner-4.8.0.2856-linux/bin"
-          
-          sonar-scanner \
-            -Dsonar.projectKey=petclinic-devops \
-            -Dsonar.projectName=petclinic-devops \
-            -Dsonar.sources=src/main/java \
-            -Dsonar.tests=src/test/java \
-            -Dsonar.java.binaries=target/classes \
-            -Dsonar.junit.reportPaths=target/surefire-reports \
-            -Dsonar.jacoco.reportPaths=target/site/jacoco/jacoco.xml \
-            -Dsonar.host.url=${{ env.SONAR_HOST_URL }} \
-            -Dsonar.login=${{ env.SONAR_TOKEN }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Run SonarQube Analysis
+        run: mvn clean verify sonar:sonar \
+         -Dsonar.projectKey=petclinic-devops \
+         -Dsonar.host.url=${{ env.SONAR_HOST_URL }} \
+         -Dsonar.login=${{ secrets.YOUR_SONAR_TOKEN }}
+        working-directory: ./   # pom.xml'in olduğu dizin
 
       # Dependency Scanning
       - name: OWASP Dependency Check
