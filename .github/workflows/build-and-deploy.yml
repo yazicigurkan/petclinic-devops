@@ -22,13 +22,6 @@ jobs:
           token: ${{ secrets.YOUR_GH_PAT }}
           fetch-depth: 0  # SonarQube için tam history gerekli
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven'
-
       # Secrets Scanning
       - name: GitLeaks Secret Scan
         run: |
