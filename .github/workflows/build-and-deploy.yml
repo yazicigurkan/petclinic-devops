@@ -58,6 +58,9 @@ jobs:
             --enableRetired
             --enableExperimental
             --failOnCVSS 7
+        env:
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+          PATH: ${{ env.JAVA_HOME }}/bin:${{ env.PATH }}
 
   # Build and Test
   build-test:
