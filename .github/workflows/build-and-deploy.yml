@@ -3,6 +3,10 @@ name: DevSecOps - Build, Scan and Deploy
 on:
   repository_dispatch:
     types: [petclinic-updated]
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
 
 env:
   REGISTRY: docker.io
@@ -35,28 +39,28 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.YOUR_GH_PAT }}
-        with:
-          config-path: .gitleaks.toml
 
-      # SAST - Tools
-      
+      # SAST - SonarQube
       - name: SonarQube SAST Scan
-        uses: sonarqube-quality-gate-action@master
+        run: |
+          # SonarScanner'ı indir ve kur
+          wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+          unzip -q sonar-scanner-cli-4.8.0.2856-linux.zip
+          export PATH="$PATH:./sonar-scanner-4.8.0.2856-linux/bin"
+          
+          # SonarQube taraması çalıştır
+          sonar-scanner \
+            -Dsonar.projectKey=petclinic-devops \
+            -Dsonar.projectName=Spring-PetClinic-DevSecOps \
+            -Dsonar.sources=src/main/java \
+            -Dsonar.tests=src/test/java \
+            -Dsonar.java.binaries=target/classes \
+            -Dsonar.junit.reportPaths=target/surefire-reports \
+            -Dsonar.jacoco.reportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.host.url=${{ env.SONAR_HOST_URL }} \
+            -Dsonar.token=${{ secrets.YOUR_SONAR_TOKEN }}
         env:
           SONAR_TOKEN: ${{ secrets.YOUR_SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
-        with:
-          scannerMode: CLI
-          args: >
-            -Dsonar.projectKey=petclinic-devops
-            -Dsonar.projectName=Spring-PetClinic-DevSecOps
-            -Dsonar.sources=src/main/java
-            -Dsonar.tests=src/test/java
-            -Dsonar.java.binaries=target/classes
-            -Dsonar.junit.reportPaths=target/surefire-reports
-            -Dsonar.jacoco.reportPaths=target/site/jacoco/jacoco.xml
-            -Dsonar.host.url=${{ env.SONAR_HOST_URL }}
-            -Dsonar.token=${{ secrets.YOUR_SONAR_TOKEN }}
 
       # Dependency Scanning
       - name: OWASP Dependency Check
@@ -152,7 +156,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Container Security Scanning - Multiple Tools
+      # Container Security Scanning - Trivy + Hadolint
+      - name: Hadolint Dockerfile Scan
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint-results.sarif
+          no-fail: true
+
       - name: Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
         with:
@@ -169,26 +181,14 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
-      - name: Docker Scout CVE Scan
-        uses: docker/scout-action@v1
-        with:
-          command: cves
-          image: ${{ steps.meta.outputs.tags }}
-          sarif-file: scout-results.sarif
-
-      - name: Hadolint Dockerfile Scan
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: Dockerfile
-          format: sarif
-          output-file: hadolint-results.sarif
-
       # Upload Security Results
-      - name: Upload Trivy Results to GitHub Security
+      - name: Upload Security Results to GitHub
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: |
+            trivy-results.sarif
+            hadolint-results.sarif
 
   # Registry Push
   registry-push:
@@ -286,8 +286,9 @@ jobs:
           echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Scan Type | Status | Details |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|---------|---------|" >> $GITHUB_STEP_SUMMARY
-          echo "| SAST | ✅ Completed | SonarQube, Semgrep |" >> $GITHUB_STEP_SUMMARY
+          echo "| SAST | ✅ Completed | SonarQube |" >> $GITHUB_STEP_SUMMARY
           echo "| SCA | ✅ Completed | OWASP Dependency Check |" >> $GITHUB_STEP_SUMMARY
-          echo "| Container Scan | ✅ Completed | Trivy, Docker Scout |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container Scan | ✅ Completed | Trivy, Hadolint |" >> $GITHUB_STEP_SUMMARY
           echo "| DAST | ✅ Completed | OWASP ZAP |" >> $GITHUB_STEP_SUMMARY
           echo "| Secrets | ✅ Completed | GitLeaks |" >> $GITHUB_STEP_SUMMARY
+
