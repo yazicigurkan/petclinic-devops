@@ -50,6 +50,7 @@ jobs:
       # Dependency Scanning
       - name: Dependency Check CLI Scan
         run: |
+          mkdir -p reports
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH:$HOME/tools/dependency-check/bin
           
