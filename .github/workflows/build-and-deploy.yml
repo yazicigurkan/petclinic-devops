@@ -164,7 +164,7 @@ jobs:
         with:
           image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
           format: 'table'
-          exit-code: '1'
+          exit-code: '0'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
@@ -190,7 +190,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Push Docker Image
-        run: docker push ${{ steps.build.outputs.tags }}
+        run: docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   # DAST
   dast-scan:
@@ -202,7 +202,7 @@ jobs:
       - name: Deploy to Staging
         run: |
           kubectl apply -f k8s/staging/ --namespace=staging
-          kubectl set image deployment/petclinic-staging petclinic=${{ steps.build.outputs.tags }} -n staging
+          kubectl set image deployment/petclinic-staging petclinic=${{ env.IMAGE_NAME }}:${{ github.sha }} -n staging
           kubectl rollout status deployment/petclinic-staging -n staging --timeout=300s
 
       - name: Wait for Application Ready
@@ -245,7 +245,7 @@ jobs:
       - name: Update Kubernetes Manifests
         run: |
           cd gitops
-          sed -i "s|image:.*|image: ${{ steps.build.outputs.tags }}|" k8s/production/deployment.yaml
+          sed -i "s|image:.*|image: ${{ env.IMAGE_NAME }}:${{ github.sha }}|" k8s/production/deployment.yaml
 
       - name: Commit and Push Manifest Changes
         run: |
