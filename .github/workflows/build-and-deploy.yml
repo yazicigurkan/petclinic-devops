@@ -1,5 +1,9 @@
 name: DevSecOps - Build, Scan and Deploy
 
+permissions:
+  contents: read
+  security-events: write
+
 on:
   repository_dispatch:
     types: [petclinic-updated]
