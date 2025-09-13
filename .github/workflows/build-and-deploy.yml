@@ -146,13 +146,22 @@ jobs:
           format: sarif
           output-file: hadolint-results.sarif
           no-fail: true
+          
+            # ⬇️ Buraya ekle
+      - name: Cache Trivy DB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}    
 
       - name: Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
         with:
+          trivy-version: '0.66.0'
           image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
           format: 'sarif'
           output: 'trivy-results.sarif'
+          timeout: '20m'
 
       - name: Trivy Critical/High CVE Check
         uses: aquasecurity/trivy-action@master
