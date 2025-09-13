@@ -109,6 +109,7 @@ jobs:
           repository: yazicigurkan/spring-petclinic
           ref: main
           token: ${{ secrets.YOUR_GH_PAT }}
+          fetch-depth: 0
 
       - name: Download Build Artifacts
         uses: actions/download-artifact@v4
