@@ -178,7 +178,7 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results.sarif
-          commit_oid: ${{ github.sha }}
+          sha: ${{ github.sha }}
           ref: ${{ github.ref }}
 
       - name: Upload Hadolint Results
@@ -186,7 +186,7 @@ jobs:
         if: always()
         with:
           sarif_file: hadolint-results.sarif
-          commit_oid: ${{ github.sha }}
+          sha: ${{ github.sha }}
           ref: ${{ github.ref }}
 
   # Registry Push
