@@ -1,9 +1,5 @@
 name: DevSecOps - Build, Scan and Deploy
 
-permissions:
-  contents: read
-  security-events: write
-
 on:
   repository_dispatch:
     types: [petclinic-updated]
@@ -182,12 +178,16 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results.sarif
+          commit_oid: ${{ github.sha }}
+          ref: ${{ github.ref }}
 
       - name: Upload Hadolint Results
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: hadolint-results.sarif
+          commit_oid: ${{ github.sha }}
+          ref: ${{ github.ref }}
 
   # Registry Push
   registry-push:
