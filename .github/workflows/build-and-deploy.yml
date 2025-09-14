@@ -195,20 +195,17 @@ jobs:
     name: Dynamic Application Security Testing
     runs-on: self-hosted
     needs: registry-push
-    if: github.event_name != 'pull_request'
     permissions:
       contents: read
       security-events: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
-          version: 'v1.30.0' # cluster versiyonuna göre ayarla
-
-      - name: Set Kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+          version: 'v1.30.0'
 
       - name: Deploy to Staging
         run: |
@@ -222,25 +219,9 @@ jobs:
       - name: Get Staging URL
         id: staging-url
         run: |
-          # Önce LoadBalancer IP dene
-          STAGING_URL=$(kubectl get svc petclinic-staging-service -n staging -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
-
-          # Eğer LB boşsa NodePort dene
-          if [ -z "$STAGING_URL" ]; then
-            NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' | awk '{print $1}')
-            NODE_PORT=$(kubectl get svc petclinic-staging-service -n staging -o jsonpath='{.spec.ports[0].nodePort}')
-            STAGING_URL="${NODE_IP}:${NODE_PORT}"
-          fi
-
-          echo "url=http://${STAGING_URL}" >> $GITHUB_OUTPUT
-
-      - name: Check Staging URL
-        run: |
-          if [ -z "${{ steps.staging-url.outputs.url }}" ]; then
-            echo "❌ Staging URL bulunamadı"
-            exit 1
-          fi
-          echo "✅ Staging URL: ${{ steps.staging-url.outputs.url }}"
+          NODE_IP=$(minikube ip)
+          NODE_PORT=$(kubectl get svc petclinic-staging-service -n staging -o jsonpath='{.spec.ports[0].nodePort}')
+          echo "url=http://${NODE_IP}:${NODE_PORT}" >> $GITHUB_OUTPUT
 
       - name: OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.10.0
