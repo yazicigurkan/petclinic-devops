@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: gurkan/petclinic
+  IMAGE_NAME: yazicigurkan/petclinic
   SONAR_HOST_URL: "http://192.168.18.99:9000"
   SONAR_TOKEN: ${{ secrets.YOUR_SONAR_TOKEN }}
 
