@@ -212,7 +212,7 @@ jobs:
 
       - name: Deploy to Staging
         run: |
-          kubectl apply -f k8s/staging/ --namespace=staging
+          kubectl apply -f .github/workflows/k8s/ --namespace=staging
           kubectl set image deployment/petclinic-staging petclinic=${{ env.IMAGE_NAME }}:${{ github.sha }} -n staging
           kubectl rollout status deployment/petclinic-staging -n staging --timeout=300s
 
