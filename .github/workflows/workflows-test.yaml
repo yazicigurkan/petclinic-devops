@@ -1,11 +1,6 @@
 name: Test Work Flow
 
 on: 
-  workflow_dispatch:
-    inputs:
-        version:
-          description: 'Version to deploy'
-          required: true
   repository_dispatch:
     types: [test-event]
           
@@ -14,6 +9,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: test step
-        id: test-step
-        run: |
-          echo "Deploying ${{ github.event.client_payload.jira_issue }}"
+        run: echo "Gürkan" |
+          echo "${{ github.event.client_payload.jira_issue }}"
