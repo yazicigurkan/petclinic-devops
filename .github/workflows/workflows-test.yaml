@@ -18,13 +18,14 @@ jobs:
         run: |
           echo "Deploying ${{ inputs.version }}"
   test-1:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: test1 -step 1
         run: ls -lart
 
       - name: test1 step 2
-        run: echo "${{test.outputs.test-step}}"
+        run: echo "${{needs.test.outputs.test-step}}"
 
           
     
