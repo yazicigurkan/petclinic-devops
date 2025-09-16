@@ -1,9 +1,6 @@
 name: Test Work Flow
 
-on:
-  repository_dispatch:
-    types:[test-event]
-    
+on: 
   workflow_dispatch:
     inputs:
         version:
