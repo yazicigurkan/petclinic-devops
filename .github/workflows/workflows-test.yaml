@@ -12,8 +12,9 @@ on:
 
 jobs:
   test:
-  runs-on: self-hosted
+    runs-on: self-hosted
     steps:
       - name:test step
-        run: echo "Şu versiyon '${{inputs.version}}'"
+        run: echo "Şu versiyon ${{inputs.version}}"
+    
         
