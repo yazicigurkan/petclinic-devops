@@ -6,7 +6,7 @@ on:
 
 jobs:
   test-runner:
-    runs-on: ubuntu-latest  # self-hosted runner test ediyorsan
+    runs-on: self-hosted  # self-hosted runner test ediyorsan
     steps:
       - name: Print payload
         run: |
