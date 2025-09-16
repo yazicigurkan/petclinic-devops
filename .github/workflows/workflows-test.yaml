@@ -9,5 +9,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: test step
-        run: echo "Gürkan" |
-          echo "${{ github.event.client_payload.jira_issue }}"
+        run: |
+          echo "Version: ${{ github.event.client_payload.jira_issue }}"
