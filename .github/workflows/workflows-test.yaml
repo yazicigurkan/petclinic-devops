@@ -12,8 +12,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    outputs:
-      test-step: ${{steps.test-step.outputs}}
     steps:
       - name: test step
         id: test-step
