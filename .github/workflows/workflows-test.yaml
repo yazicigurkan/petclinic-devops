@@ -16,4 +16,4 @@ jobs:
       - name: test step
         id: test-step
         run: |
-          echo "Deploying ${{ inputs.version }}"
+          echo "Deploying ${{ github.event.client_payload.jira_issue }}"
