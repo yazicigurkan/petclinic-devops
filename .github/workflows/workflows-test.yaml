@@ -13,6 +13,6 @@ jobs:
     steps:
       - name: test step
         run: |
-          echo "Deploying ${{ needs.build.outputs.image-tag }}"
+          echo "Deploying ${{ inputs.version }}"
     
         
