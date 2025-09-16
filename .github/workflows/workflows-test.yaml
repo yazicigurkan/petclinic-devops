@@ -10,9 +10,22 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    outputs:
+      test-step: ${{steps.test-step.outputs}}
     steps:
       - name: test step
+        id: test-step
         run: |
           echo "Deploying ${{ inputs.version }}"
+  test-1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: test1 -step 1
+        run: ls -lart
+
+      - name: test1 step 2
+        run: echo "${{test.outputs.test-step}}"
+
+          
     
         
