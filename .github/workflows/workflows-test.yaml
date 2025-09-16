@@ -1,13 +1,19 @@
-name: Test Work Flow
+name: Runner Test Workflow
 
-on: 
+on:
   repository_dispatch:
-    types: [test-event]
-          
+    types: [runner-test]
+
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  test-runner:
+    runs-on: self-hosted  # self-hosted runner test ediyorsan
     steps:
-      - name: test step
+      - name: Print payload
         run: |
-          echo "Version: ${{ github.event.client_payload.jira_issue }}"
+          echo "== Runner Test Started =="
+          echo "Event type: ${{ github.event.action }}"
+          echo "Payload version: ${{ github.event.client_payload.jira_issue }}"
+          echo "Payload environment: ${{ github.event.client_payload.developer_name }}"
+          echo "Runner OS: $RUNNER_OS"
+          echo "Runner Arch: $RUNNER_ARCH"
+          echo "== Runner Test Finished =="
