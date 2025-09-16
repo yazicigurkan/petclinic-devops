@@ -26,7 +26,3 @@ jobs:
 
       - name: test1 step 2
         run: echo "${{needs.test.outputs.test-step}}"
-
-          
-    
-        
