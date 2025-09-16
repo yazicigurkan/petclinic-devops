@@ -9,12 +9,13 @@ on:
         version:
           description: 'Version to deploy'
           required: true
-
+          
 jobs:
   test:
     runs-on: self-hosted
     steps:
-      - name:test step
-        run: echo "Şu versiyon ${{inputs.version}}"
+      - name: test step
+        run: |
+          echo "Deploying ${{ needs.build.outputs.image-tag }}"
     
         
